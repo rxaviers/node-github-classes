@@ -1,0 +1,27 @@
+{
+  "name": "node-github-oo",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/rxaviers/node-github-oo.git"
+  },
+  "keywords": [
+    "github",
+    "API",
+    "JavaScript",
+    "class",
+    "high",
+    "level"
+  ],
+  "author": "Rafael Xavier de Souza",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rxaviers/node-github-oo/issues"
+  },
+  "homepage": "https://github.com/rxaviers/node-github-oo#readme"
+}
