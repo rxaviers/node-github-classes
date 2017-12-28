@@ -1,4 +1,4 @@
-This is a GitHub REST API Object Oriented Programming experiment (and therefore very incomplete) for JavaScript. It depends on [octokit/node-github](octokit/node-github).
+This is a GitHub REST API Object Oriented abstraction for JavaScript. This is still an experiment (and therefore very incomplete). It depends on [octokit/node-github](octokit/node-github).
 
 ## Motivation
 
