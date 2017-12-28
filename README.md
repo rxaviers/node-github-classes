@@ -17,3 +17,20 @@ let user = new User({login: "rxaviers"});
 let repos = await user.getRepos();
 ```
 
+## Usage
+
+```js
+import GitHubApi from "github";
+import GitHubApi from "github-oo";
+
+// Read octokit/node-github for instructions...
+const github = new GitHubApi(...);
+github.authenticate(...);
+
+const {User, Repo, Branch} = new GitHubOO(github);
+...
+```
+
+## API
+
+TBD
