@@ -1,5 +1,3 @@
-let github;
-
 /**
  * Array utils
  */
@@ -13,17 +11,17 @@ function flatten(array) {
 /**
  * Connection utils
  */
-function _getAllPages(resArray, res) {
+function _getAllPages({debug, resArray}, res) {
   resArray.push(res);
   debug && console.log("- getNextPage", resArray.length);
   if (/rel="next"/.test(res.meta.link)) {
-    return github.getNextPage(res).then(_getAllPages.bind(null, resArray));
+    return github.getNextPage(res).then(_getAllPages.bind(null, {debug, resArray}));
   }
   return resArray;
 }
 
-function getAllPages() {
-  return _getAllPages.bind(null, []);
+function getAllPages({debug}) {
+  return _getAllPages.bind(null, {debug, resArray: []});
 }
 
 function retryOnConnectionIssues(cb) {
@@ -40,8 +38,8 @@ function retryOnConnectionIssues(cb) {
 /**
  * Main class
  */
-class Main() {
-  constructor(github) {
+class Main {
+  constructor(github, {debug = false} = {}) {
     this.github = github;
 
     /**
@@ -51,7 +49,7 @@ class Main() {
       static getAll() {
         debug && console.log("Fetching all users (this might take awhile)...");
         return github.users.getAll({since: 0})
-          .then(getAllPages())
+          .then(getAllPages({debug}))
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
@@ -76,7 +74,7 @@ class Main() {
         const username = user.login;
         debug && console.log(`Fetching all repos from user ${username}...`);
         return github.repos.getForUser({username})
-          .then(getAllPages())
+          .then(getAllPages({debug}))
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
@@ -128,7 +126,7 @@ class Main() {
         const owner = user.login;
         debug && console.log(`Fetching all branches of ${owner}/${repo.name}...`);
         return github.repos.getBranches({owner, repo: repo.name})
-          .then(getAllPages())
+          .then(getAllPages({debug}))
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
