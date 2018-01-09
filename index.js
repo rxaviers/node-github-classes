@@ -9,33 +9,6 @@ function flatten(array) {
 }
 
 /**
- * Connection utils
- */
-function _getAllPages({debug, resArray}, res) {
-  resArray.push(res);
-  debug && console.log("- getNextPage", resArray.length);
-  if (/rel="next"/.test(res.meta.link)) {
-    return github.getNextPage(res).then(_getAllPages.bind(null, {debug, resArray}));
-  }
-  return resArray;
-}
-
-function getAllPages({debug}) {
-  return _getAllPages.bind(null, {debug, resArray: []});
-}
-
-function retryOnConnectionIssues(cb) {
-  return cb()
-    .catch(error => {
-      if (/ECONNRESET/.test(error.message)) {
-        debug && console.log(`${error.message}, retrying...`);
-        return cb();
-      }
-      throw error;
-    });
-}
-
-/**
  * Main class
  */
 class Main {
@@ -43,13 +16,43 @@ class Main {
     this.github = github;
 
     /**
+     * Connection utils
+     */
+    function _getAllPages({resArray, count}, res) {
+      resArray.push(res);
+      debug && console.log("- getNextPage", resArray.length);
+      if (count && resArray.reduce((sum, res) => sum + res.data.length, 0) > count) {
+        return resArray;
+      }
+      if (/rel="next"/.test(res.meta.link)) {
+        return github.getNextPage(res).then(_getAllPages.bind(null, {resArray, count}));
+      }
+      return resArray;
+    }
+
+    function getAllPages(opts = {}) {
+      return _getAllPages.bind(null, {...opts, resArray: []});
+    }
+
+    function retryOnConnectionIssues(cb) {
+      return cb()
+        .catch(error => {
+          if (/ECONNRESET/.test(error.message)) {
+            debug && console.log(`${error.message}, retrying...`);
+            return cb();
+          }
+          throw error;
+        });
+    }
+
+    /**
      * User class
      */
     class User {
-      static getAll() {
+      static getAll(opts) {
         debug && console.log("Fetching all users (this might take awhile)...");
         return github.users.getAll({since: 0})
-          .then(getAllPages({debug}))
+          .then(getAllPages(opts))
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
@@ -70,11 +73,11 @@ class Main {
      * Repo class
      */
     class Repo {
-      static getAll({user}) {
+      static getAll({user, otherProps}) {
         const username = user.login;
         debug && console.log(`Fetching all repos from user ${username}...`);
         return github.repos.getForUser({username})
-          .then(getAllPages({debug}))
+          .then(getAllPages(otherProps))
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
@@ -118,7 +121,7 @@ class Main {
           if (error.status === "Not Found") {
             return null;
           }
-          throw new Error(`Branch.get: ${error.message}`);
+          throw error;
         });
       }
 
@@ -126,7 +129,7 @@ class Main {
         const owner = user.login;
         debug && console.log(`Fetching all branches of ${owner}/${repo.name}...`);
         return github.repos.getBranches({owner, repo: repo.name})
-          .then(getAllPages({debug}))
+          .then(getAllPages())
           .then(resArray => {
             resArray = resArray.map(res => res.data);
             return flatten(resArray);
@@ -140,12 +143,39 @@ class Main {
         Object.defineProperty(this, "repo", {get: () => repo});
       }
 
-      getCommit({sha = this.commit.sha} = {}) {
+      // optional parameters: `ref`.
+      getContent({path, ...otherProps} = {}) {
+        const repo = this.repo.name;
+        const owner = this.user.login;
+        return github.repos.getContent({owner, repo, path, ...otherProps})
+          .then(res => {
+            let data = res.data;
+            if (data.content) {
+              data.content = new Buffer(data.content, "base64").toString("utf8");
+            }
+            return data;
+          });
+      }
+
+      getCommit({sha = this.commit.sha, ...otherProps} = {}) {
         sha = sha || this.commit.sha;
         const repo = this.repo.name;
         const owner = this.user.login;
-        return github.repos.getCommit({owner, repo, sha})
+        return github.repos.getCommit({owner, repo, sha, ...otherProps})
           .then(res => res.data);
+      }
+
+      getCommits({sha = this.commit.sha, ...otherProps} = {}) {
+        sha = sha || this.commit.sha;
+        const repo = this.repo.name;
+        const owner = this.user.login;
+        return github.repos.getCommits({owner, repo, sha, ...otherProps})
+          .then(getAllPages(otherProps))
+          .then(resArray => {
+            resArray = resArray.map(res => res.data);
+            return flatten(resArray);
+          });
+          // TODO .then(commitsProps => commitsProps.map(commitProps => new Commit(commitProps, {user, ...??})));
       }
 
       getTree({sha = this.commit.sha, recursive = false} = {}) {
@@ -158,7 +188,7 @@ class Main {
               if (error.status === "Not Found") {
                 return {};
               }
-              throw new Error(`branch.getTree: ${error.message}`);
+              throw error;
             });
         });
       }
