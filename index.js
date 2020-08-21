@@ -143,11 +143,10 @@ class Main {
         Object.defineProperty(this, "repo", {get: () => repo});
       }
 
-      // optional parameters: `ref`.
-      getContent({path, ...otherProps} = {}) {
+      getContent({path, ref = this.name, ...otherProps} = {}) {
         const repo = this.repo.name;
         const owner = this.user.login;
-        return github.repos.getContent({owner, repo, path, ...otherProps})
+        return github.repos.getContent({owner, repo, path, ref, ...otherProps})
           .then(res => {
             let data = res.data;
             if (data.content) {
